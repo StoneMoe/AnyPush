@@ -3,17 +3,37 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      SHORT_SHA: $(echo ${GITHUB_SHA} | cut -c1-8)
+      TAG: ''
+      DOCKERHUB_REPOSITORY: stonemoe/anypush
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Check tag
+        id: get_tag
+        run: echo ::set-env name=TAG::${GITHUB_REF/refs\/tags\//}
+
       - name: Docker login
-        run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username <YOUR_USER> --password-stdin
+        run: echo '${DOCKERHUB_PASSWORD}' | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Docker build
-        run: docker build . --file Dockerfile --tag stonemoe/anypush:rolling-${{ github.sha }}
+        run: docker build . --file Dockerfile --tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
+
       - name: Docker push rolling image
-        run: docker push stonemoe/anypush:rolling-${{ github.sha }}
+        run: docker push ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
+
       - name: Docker push stable image
-        if: ${GITHUB_REF##*/} != ''
-        run: docker tag stonemoe/anypush:rolling-${{ github.sha }} stonemoe/anypush:${GITHUB_REF##*/} && docker push stonemoe/anypush:${GITHUB_REF##*/}
+        if: ${SHORT_SHA} != ''
+        run: docker tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA} ${DOCKERHUB_REPOSITORY}:${TAG} && docker push ${DOCKERHUB_REPOSITORY}:${TAG}
+
       - name: Sync Docker Hub Description
         uses: peter-evans/dockerhub-description@v2.1.0
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
