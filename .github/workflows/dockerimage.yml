@@ -1,0 +1,19 @@
+name: Docker Image CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Docker login
+        run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username <YOUR_USER> --password-stdin
+      - name: Docker build
+        run: docker build . --file Dockerfile --tag stonemoe/anypush:rolling-${{ github.sha }}
+      - name: Docker push rolling image
+        run: docker push stonemoe/anypush:rolling-${{ github.sha }}
+      - name: Docker push stable image
+        if: ${GITHUB_REF##*/} != ''
+        run: docker tag stonemoe/anypush:rolling-${{ github.sha }} stonemoe/anypush:${GITHUB_REF##*/} && docker push stonemoe/anypush:${GITHUB_REF##*/}
+      - name: Sync Docker Hub Description
+        uses: peter-evans/dockerhub-description@v2.1.0
