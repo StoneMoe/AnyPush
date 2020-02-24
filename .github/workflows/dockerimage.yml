@@ -5,16 +5,19 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SHORT_SHA: $(echo ${GITHUB_SHA} | cut -c1-8)
+      SHORT_SHA: ''
       TAG: ''
       DOCKERHUB_REPOSITORY: stonemoe/anypush
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Check tag
+      - name: Set tag
         id: get_tag
         run: echo ::set-env name=TAG::${GITHUB_REF/refs\/tags\//}
+      - name: Set SHA
+        id: get_sha
+        run: echo ::set-env name=SHORT_SHA::$(echo ${GITHUB_SHA} | cut -c1-8)
 
       - name: Docker login
         run: echo '${DOCKERHUB_PASSWORD}' | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
@@ -29,7 +32,7 @@ jobs:
         run: docker push ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
 
       - name: Docker push stable image
-        if: ${{ env.SHORT_SHA }} != ''
+        if: ${{ SHORT_SHA }} != ''
         run: docker tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA} ${DOCKERHUB_REPOSITORY}:${TAG} && docker push ${DOCKERHUB_REPOSITORY}:${TAG}
 
       - name: Sync Docker Hub Description
