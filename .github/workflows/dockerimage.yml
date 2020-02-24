@@ -26,7 +26,7 @@ jobs:
         run: echo ::set-env name=SHORT_SHA::$(echo ${GITHUB_SHA} | cut -c1-8)
 
       - name: Docker login
-        run: echo '${DOCKERHUB_PASSWORD}' | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
+        run: echo ${DOCKERHUB_PASSWORD} | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
