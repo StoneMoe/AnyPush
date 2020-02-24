@@ -19,8 +19,8 @@ jobs:
         run: echo ::set-env name=TAG::${GITHUB_REF/refs\/tags\//}
       - name: Set branch
         id: get_branch
-        if: contains(github.ref, 'refs/head/')
-        run: echo ::set-env name=BRANCH::${GITHUB_REF/refs\/head\//}
+        if: contains(github.ref, 'refs/heads/')
+        run: echo ::set-env name=BRANCH::${GITHUB_REF/refs\/heads\//}
       - name: Set SHA
         id: get_sha
         run: echo ::set-env name=SHORT_SHA::$(echo ${GITHUB_SHA} | cut -c1-8)
