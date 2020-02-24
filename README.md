@@ -1,8 +1,9 @@
 ![](img/logo.png)
 
 # Feature
-1. Accepting incoming email as SMTP Server, and send it with HTTP (or Webhook)
-2. More incoming & output options in the future.
+1. Accepting incoming email as SMTP Server, and send it with HTTP (or Webhook).
+2. For Synology NAS email notification redirect currently. 
+3. More incoming & output options in the future.
 
 # Usage
 Use docker:
