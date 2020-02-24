@@ -29,7 +29,7 @@ jobs:
         run: docker push ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
 
       - name: Docker push stable image
-        if: ${SHORT_SHA} != ''
+        if: ${{SHORT_SHA}} != ''
         run: docker tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA} ${DOCKERHUB_REPOSITORY}:${TAG} && docker push ${DOCKERHUB_REPOSITORY}:${TAG}
 
       - name: Sync Docker Hub Description
