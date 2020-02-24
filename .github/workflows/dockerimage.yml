@@ -6,6 +6,7 @@ jobs:
 
     env:
       SHORT_SHA: ''
+      BRANCH: ''
       TAG: ''
       DOCKERHUB_REPOSITORY: stonemoe/anypush
 
@@ -14,7 +15,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Set tag
         id: get_tag
+        if: contains(github.ref, 'refs/tags/')
         run: echo ::set-env name=TAG::${GITHUB_REF/refs\/tags\//}
+      - name: Set branch
+        id: get_branch
+        if: contains(github.ref, 'refs/head/')
+        run: echo ::set-env name=BRANCH::${GITHUB_REF/refs\/head\//}
       - name: Set SHA
         id: get_sha
         run: echo ::set-env name=SHORT_SHA::$(echo ${GITHUB_SHA} | cut -c1-8)
@@ -26,14 +32,14 @@ jobs:
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Docker build
-        run: docker build . --file Dockerfile --tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
+        run: docker build . --file Dockerfile --tag ${DOCKERHUB_REPOSITORY}:rolling-${BRANCH}-${SHORT_SHA}
 
       - name: Docker push rolling image
-        run: docker push ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA}
+        run: docker push ${DOCKERHUB_REPOSITORY}:rolling-${BRANCH}-${SHORT_SHA}
 
       - name: Docker push stable image
-        if: env.TAG != ''
-        run: docker tag ${DOCKERHUB_REPOSITORY}:rolling-${SHORT_SHA} ${DOCKERHUB_REPOSITORY}:${TAG} && docker push ${DOCKERHUB_REPOSITORY}:${TAG}
+        if: env.TAG != '' && env.BRANCH == 'master'
+        run: docker tag ${DOCKERHUB_REPOSITORY}:rolling-${BRANCH}-${SHORT_SHA} ${DOCKERHUB_REPOSITORY}:${TAG} && docker push ${DOCKERHUB_REPOSITORY}:${TAG}
 
       - name: Sync Docker Hub Description
         uses: peter-evans/dockerhub-description@v2.1.0
