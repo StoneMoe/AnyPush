@@ -6,10 +6,12 @@
 3. More incoming & output options in the future.
 
 # Usage
-Use docker:
+Use Docker:
 ```bash
-docker run --name=anypush --restart=unless-stopped -e WEBHOOK_URL=https://example.com/api -p 0.0.0.0:1025:1025 stonemoe/anypush:1.0.0
+docker run --name=anypush --restart=unless-stopped -e WEBHOOK_URL=https://example.com/api -p 0.0.0.0:1025:1025 stonemoe/anypush:tag_name
 ```
+**(Use `rolling-[branch]-[commit]` for rolling channel, or git tagged versions like `1.0.0` for stable channel)**
+
 Then AnyPush will:
 ```
 POST https://example.com/api with JSON:
