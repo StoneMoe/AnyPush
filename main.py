@@ -24,7 +24,10 @@ class CustomSMTPServer(smtpd.SMTPServer):
     def process_message(self, peer: tuple, mailfrom: str, rcpttos: list, data: bytes, **kwargs):
         msg: Message = email.message_from_bytes(data)
         decoded_header: list = decode_header(msg.get('Subject'))
-        subject = ''.join([str(item[0], item[1] or default_charset) for item in decoded_header])
+        subject = ''.join([
+            str(item[0], encoding=item[1] or default_charset) if isinstance(item[0], bytes) else item[0]
+            for item in decoded_header
+        ])
         data = {
             'from': mailfrom,
             'to': rcpttos.pop(),
@@ -32,7 +35,10 @@ class CustomSMTPServer(smtpd.SMTPServer):
             'text': msg.get_payload()
         }
         logger.info('Redirect Email "%s" to "%s"' % (subject, data['to']))
-        requests.post(webhook_url, json=data)
+        try:
+            requests.post(webhook_url, json=data)
+        except Exception as e:
+            logger.error('Webhook request failed: %r' % e)
 
 
 if __name__ == '__main__':
