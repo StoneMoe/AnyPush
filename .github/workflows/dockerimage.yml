@@ -56,7 +56,7 @@ jobs:
           release_name: Release ${{ env.TAG }}
           body: |
             ```
-            docker run --name=anypush --restart=unless-stopped -e WEBHOOK_URL=https://example.com/api -p 0.0.0.0:1025:1025 ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.TAG }}
+            docker run --name=anypush --restart=unless-stopped -e WEBHOOK_URL=https://example.com/api -p 0.0.0.0:587:587 ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.TAG }}
             ```
           draft: false
           prerelease: false

@@ -7,6 +7,6 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt --no-cache-dir
 
 COPY . .
-EXPOSE 1025
+EXPOSE 587
 
 ENTRYPOINT ["/usr/bin/python3", "/anypush/main.py"]

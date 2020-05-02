@@ -44,7 +44,7 @@ class CustomSMTPServer(smtpd.SMTPServer):
 if __name__ == '__main__':
     host_name = socket.gethostname()
     host_ip = socket.gethostbyname(host_name)
-    server = CustomSMTPServer(('0.0.0.0', 1025), None)
+    server = CustomSMTPServer(('0.0.0.0', 587), None)
     logger.info("Hostname: %s" % host_name)
     logger.info("IP: %s" % host_ip)
     logger.info("Listening: %s" % str(server._localaddr))
