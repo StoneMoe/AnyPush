@@ -98,15 +98,14 @@ class CustomSMTPServer(smtpd.SMTPServer):
                  otherwise, it should return the desired response string in RFC 821 format.
         """
         msg = Mail(peer, mailfrom, rcpttos, data, **kwargs)
-        # Parse data
 
         data = {
             'from': msg.sender,
-            'to': ','.join(msg.to),
+            'to': msg.to,
             'subject': msg.subject,
             'text': msg.text
         }
-        logger.info('Redirect Email "%s" to "%s"' % (msg.subject, msg.to))
+        logger.info('Redirect "%s" to %s' % (msg.subject, msg.to))
         try:
             requests.post(webhook_url, json=data)
         except Exception as e:

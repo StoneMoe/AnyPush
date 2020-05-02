@@ -40,10 +40,10 @@ Then AnyPush will:
 ```
 POST https://example.com/api with JSON:
 {
-  'from': "sender@example.com",
-  'to': "to@example.com",
-  'subject': "mail subject",
-  'text': "mail content here"
+  "from": "sender@example.com",
+  "to": ["to@example.com"],
+  "subject": "mail subject",
+  "text": "mail content here"
 }
 ```
 
