@@ -3,7 +3,7 @@
 import asyncore
 import email
 import logging
-import smtpd
+from smtpd import SMTPServer, SMTPChannel
 import socket
 import sys
 from email.header import decode_header
@@ -70,7 +70,13 @@ class Mail:
             raise NotImplementedError('expect str or List[Message] payload, but it was %s' % type(self.payload))
 
 
-class CustomSMTPServer(smtpd.SMTPServer):
+class AnyPushSMTPChanel(SMTPChannel):
+    def smtp_AUTH(self, arg):
+        self.push('235 Authentication successful.')
+
+
+class AnyPushSMTPServer(SMTPServer):
+    channel_class = AnyPushSMTPChanel
 
     def process_message(self, peer: tuple, mailfrom: str, rcpttos: list, data: bytes, **kwargs):
         """
@@ -116,7 +122,7 @@ if __name__ == '__main__':
     host_name = socket.gethostname()
     host_ip = socket.gethostbyname(host_name)
     listen_at = ('0.0.0.0', 587)
-    server = CustomSMTPServer(listen_at, None)
+    server = AnyPushSMTPServer(listen_at, None)
     logger.info("Hostname: %s" % host_name)
     logger.info("IP: %s" % host_ip)
     logger.info("Listening: %s" % str(listen_at))
