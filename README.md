@@ -1,56 +1,69 @@
 ![](img/logo.png)
 
-# Feature
-1. Accepting incoming email as SMTP Server, and send it with HTTP (or Webhook).
-2. For Synology NAS email notification redirect currently. 
-3. More incoming & output options in the future.
+# AnyPush
 
-# Installation
-### Start Docker container
+A flexible message router that accepts messages from various sources, processing and routes them to different destinations based on configurable rules.
+
+## Features
+
+- **Multiple Inbound Handlers**: SMTP, HTTP, TCP
+- **Multiple Outbound Handlers**: HTTP, TCP
+- **Flexible Routing**: Expression-based conditions
+- **Pipeline Processing**: Chain actions like log, transform, route
+- **YAML Configuration**: With anchor/alias support for reusability
+
+## Quick Start
+
 ```bash
-docker run --name=anypush --restart=unless-stopped -e WEBHOOK_URL=https://example.com/api -p 0.0.0.0:587:587 stonemoe/anypush:tag_name
+cd anypush-rs
+cargo run -- --config config.test.yaml
 ```
-Check stable release tags in [Release page](https://github.com/StoneMoe/AnyPush/releases)  
-Check all available tags in [DockerHub repository](https://hub.docker.com/r/stonemoe/anypush/tags)
 
-### Test it
+Test with curl:
 ```bash
-$ telnet localhost 587
-Trying localhost...
-Connected to localhost.
-Escape character is '^]'.
-220 anypush Python SMTP proxy version 0.3
-HELO localhost
-250 anypush
-mail from: sender@example.com
-250 OK
-rcpt to: to@example.com
-250 OK
-data
-354 End data with <CR><LF>.<CR><LF>
-Hey
-This is test email
+curl -X POST http://127.0.0.1:8080 \
+  -H "Content-Type: application/json" \
+  -d '{"from":"test@example.com","subject":"Hello","text":"Test message"}'
+```
 
-250 OK
+Or send via SMTP:
+```bash
+telnet localhost 2525
+HELO test
+MAIL FROM:<sender@example.com>
+RCPT TO:<receiver@example.com>
+DATA
+Subject: Test
+Hello World
+.
 QUIT
-221 Bye
 ```
 
-Then AnyPush will:
-```
-POST https://example.com/api with JSON:
-{
-  "from": "sender@example.com",
-  "to": ["to@example.com"],
-  "subject": "mail subject",
-  "text": "mail content here"
-}
+## Configuration Example
+
+```yaml
+inbound:
+  - type: http
+    name: http-api
+    port: 8080
+  - type: smtp
+    name: smtp-receiver
+    port: 2525
+
+outbound:
+  - type: http
+    name: webhook
+    url: https://example.com/api
+
+routes:
+  - when:
+      from: smtp-receiver
+    goto:
+      - action: log
+      - action: route
+        to: webhook
 ```
 
-# Notice
-This project is still under heavily development.
+## Development Status
 
-You may encounter issues including:
-1. Breaking API compatibility between commits
-2. Trash hard-code
-3. Crash in some case
+This project is under active development. The Rust rewrite (`anypush-rs/`) provides improved performance and flexibility.
