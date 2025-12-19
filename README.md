@@ -1,4 +1,4 @@
-![](img/logo.png)
+![](img/banner.png)
 
 # AnyPush
 
