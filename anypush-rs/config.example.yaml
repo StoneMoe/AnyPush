@@ -1,0 +1,36 @@
+# Example AnyPush configuration
+
+workdir: "."
+
+# Define reusable pipelines using YAML anchors
+.email-processor: &email-processor
+  - action: log
+    level: info
+  - action: reject
+    message: "Spam not allowed"
+    when:
+      expr: 'subject ~= "spam" || from ~= ".*@spammer\\.com"'
+  - action: route
+    to: main-webhook
+
+# Inbound handlers
+inbound:
+  - type: smtp
+    name: main-smtp
+    host: 0.0.0.0
+    port: 2525
+
+# Outbound handlers
+outbound:
+  - type: webhook
+    name: main-webhook
+    url: https://example.com/api
+    method: POST
+    headers:
+      Content-Type: application/json
+
+# Routes
+routes:
+  - when:
+      from: main-smtp
+    goto: *email-processor
