@@ -1,5 +1,11 @@
 ![](img/logo.png)
 
+⚠️**Notice**  
+Checkout branch `v2` for the latest version.  
+
+✨**AnyPush V2**  
+A flexible message router that accepts messages from various sources, processing and routes them to different destinations based on configurable rules.
+
 # Feature
 1. Accepting incoming email as SMTP Server, and send it with HTTP (or Webhook).
 2. For Synology NAS email notification redirect currently. 
