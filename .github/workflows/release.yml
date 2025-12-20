@@ -53,6 +53,7 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build
+        working-directory: anypush-rs
         run: cargo build --release --target ${{ matrix.target }}
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
@@ -60,16 +61,14 @@ jobs:
       - name: Package (Unix)
         if: matrix.archive == 'tar.gz'
         run: |
-          cd target/${{ matrix.target }}/release
-          tar czvf ../../../anypush-${{ matrix.target }}.tar.gz anypush
-          cd ../../..
+          cd anypush-rs/target/${{ matrix.target }}/release
+          tar czvf ../../../../anypush-${{ matrix.target }}.tar.gz anypush
 
       - name: Package (Windows)
         if: matrix.archive == 'zip'
         run: |
-          cd target/${{ matrix.target }}/release
-          7z a ../../../anypush-${{ matrix.target }}.zip anypush.exe
-          cd ../../..
+          cd anypush-rs/target/${{ matrix.target }}/release
+          7z a ../../../../anypush-${{ matrix.target }}.zip anypush.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
