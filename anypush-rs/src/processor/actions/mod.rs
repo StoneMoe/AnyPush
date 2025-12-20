@@ -3,6 +3,7 @@
 mod base64;
 mod drop;
 mod field;
+mod framing;
 mod log;
 mod noop;
 mod reject;
@@ -11,6 +12,7 @@ mod route;
 pub use base64::{Base64DecodeAction, Base64EncodeAction};
 pub use drop::DropAction;
 pub use field::{DeleteFieldAction, SetFieldAction};
+pub use framing::{ForeachLineAction, LengthPrefixAction};
 pub use log::LogAction;
 pub use noop::NoOpAction;
 pub use reject::RejectAction;
@@ -40,6 +42,10 @@ pub fn create_action(
         "set_field" => Ok(Box::new(SetFieldAction::from_params(params)?)),
         "delete_field" => Ok(Box::new(DeleteFieldAction::from_params(params)?)),
 
+        // Framing actions
+        "foreach_line" => Ok(Box::new(ForeachLineAction::from_params(params)?)),
+        "length_prefix" => Ok(Box::new(LengthPrefixAction::from_params(params)?)),
+
         // Crypto actions (stubs)
         "aes128cbc_encrypt" | "aes128cbc_decrypt" | "aes256cbc_encrypt" | "aes256cbc_decrypt" => {
             warn!("Crypto action '{}' not yet implemented", action_type);
@@ -47,16 +53,6 @@ pub fn create_action(
         }
         "rsa_encrypt" | "rsa_decrypt" => {
             warn!("RSA action '{}' not yet implemented", action_type);
-            Ok(Box::new(NoOpAction::new(action_type)))
-        }
-
-        // Iterator actions (stubs)
-        "foreach_line" => {
-            warn!("foreach_line action not yet implemented");
-            Ok(Box::new(NoOpAction::new(action_type)))
-        }
-        "len_data_pattern_bin" => {
-            warn!("len_data_pattern_bin action not yet implemented");
             Ok(Box::new(NoOpAction::new(action_type)))
         }
 

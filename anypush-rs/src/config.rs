@@ -19,9 +19,9 @@ pub struct Config {
     #[serde(default)]
     pub outbound: Vec<OutboundConfig>,
 
-    /// Routes connecting inbounds to pipelines
+    /// Processing pipeline (flat array of steps)
     #[serde(default)]
-    pub routes: Vec<RouteConfig>,
+    pub pipeline: Vec<StepConfig>,
 }
 
 fn default_workdir() -> String {
@@ -96,6 +96,8 @@ pub enum OutboundConfig {
     Http(HttpOutboundConfig),
     #[serde(rename = "tcp")]
     Tcp(TcpOutboundConfig),
+    #[serde(rename = "s3")]
+    S3(S3OutboundConfig),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,24 +121,23 @@ pub struct TcpOutboundConfig {
     pub port: u16,
 }
 
-/// Route configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RouteConfig {
-    /// Optional condition for this route
-    #[serde(rename = "when")]
-    pub when_clause: Option<WhenClause>,
-
-    /// Pipeline steps (goto with inline steps)
+pub struct S3OutboundConfig {
+    pub name: String,
+    pub bucket: String,
+    /// Key template (supports {{id}}, {{from}}, {{subject}}, {{timestamp}})
+    #[serde(default = "default_s3_key")]
+    pub key: String,
+    /// Optional region override
     #[serde(default)]
-    pub goto: Option<Vec<StepConfig>>,
-
-    /// Single action shortcut (when only one action is needed)
+    pub region: Option<String>,
+    /// Optional endpoint override (for S3-compatible services)
     #[serde(default)]
-    pub action: Option<String>,
+    pub endpoint: Option<String>,
+}
 
-    /// Additional action parameters (flattened)
-    #[serde(flatten)]
-    pub action_params: HashMap<String, serde_yaml::Value>,
+fn default_s3_key() -> String {
+    "{{id}}.json".to_string()
 }
 
 /// When clause for conditional execution
@@ -199,7 +200,106 @@ pub fn load_config(path: &Path, workdir_override: Option<&Path>) -> Result<Confi
         config.workdir = wd.to_string_lossy().to_string();
     }
 
+    // Validate configuration
+    config.validate()?;
+
     Ok(config)
+}
+
+impl Config {
+    /// Validate the configuration for common issues
+    pub fn validate(&self) -> Result<()> {
+        use std::collections::HashSet;
+
+        // Collect all inbound names and check for duplicates
+        let mut inbound_names: HashSet<&str> = HashSet::new();
+        for inbound in &self.inbound {
+            let name = inbound.name();
+            if !inbound_names.insert(name) {
+                return Err(anyhow::anyhow!(
+                    "Duplicate inbound handler name: '{}'. Each handler must have a unique name.",
+                    name
+                ));
+            }
+        }
+
+        // Collect all outbound names and check for duplicates
+        let mut outbound_names: HashSet<&str> = HashSet::new();
+        for outbound in &self.outbound {
+            let name = outbound.name();
+            if !outbound_names.insert(name) {
+                return Err(anyhow::anyhow!(
+                    "Duplicate outbound handler name: '{}'. Each handler must have a unique name.",
+                    name
+                ));
+            }
+        }
+
+        // Validate pipeline steps
+        self.validate_steps(&self.pipeline, &inbound_names, &outbound_names)?;
+
+        Ok(())
+    }
+
+    fn validate_steps(
+        &self,
+        steps: &[StepConfig],
+        inbound_names: &std::collections::HashSet<&str>,
+        outbound_names: &std::collections::HashSet<&str>,
+    ) -> Result<()> {
+        for step in steps {
+            // Validate when.from references valid inbound names
+            if let Some(ref when) = step.when_clause {
+                if let Some(ref from) = when.from {
+                    let names_to_check: Vec<&str> = match from {
+                        FromMatcher::Single(name) => vec![name.as_str()],
+                        FromMatcher::Multiple(names) => names.iter().map(|s| s.as_str()).collect(),
+                    };
+                    for name in names_to_check {
+                        if !inbound_names.contains(name) {
+                            return Err(anyhow::anyhow!(
+                                "Invalid inbound reference in 'when.from': '{}'. Available inbounds: {:?}",
+                                name,
+                                inbound_names.iter().collect::<Vec<_>>()
+                            ));
+                        }
+                    }
+                }
+            }
+
+            // Validate route action targets valid outbounds
+            if let Some(ref action) = step.action {
+                if action == "route" {
+                    if let Some(to) = step.params.get("to") {
+                        let targets: Vec<String> = match to {
+                            serde_yaml::Value::String(s) => vec![s.clone()],
+                            serde_yaml::Value::Sequence(seq) => seq
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect(),
+                            _ => vec![],
+                        };
+                        for target in targets {
+                            if !outbound_names.contains(target.as_str()) {
+                                return Err(anyhow::anyhow!(
+                                    "Invalid outbound reference in 'route.to': '{}'. Available outbounds: {:?}",
+                                    target,
+                                    outbound_names.iter().collect::<Vec<_>>()
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Recursively validate nested goto steps
+            if let Some(ref goto_steps) = step.goto {
+                self.validate_steps(goto_steps, inbound_names, outbound_names)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Get inbound name from config
@@ -219,6 +319,7 @@ impl OutboundConfig {
         match self {
             OutboundConfig::Http(c) => &c.name,
             OutboundConfig::Tcp(c) => &c.name,
+            OutboundConfig::S3(c) => &c.name,
         }
     }
 }

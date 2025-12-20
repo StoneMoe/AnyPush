@@ -29,3 +29,7 @@ bytes = "1"
 
 # Crypto - using pure Rust implementations
 base64 = "0.22"
+
+# AWS S3
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"

@@ -4,7 +4,6 @@ use crate::message::Message;
 use anyhow::Result;
 use async_trait::async_trait;
 use mail_parser::MessageParser;
-use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -30,7 +29,7 @@ impl InboundHandler for SmtpInbound {
     async fn start(&self, sender: mpsc::Sender<Message>) -> Result<()> {
         let addr = format!("{}:{}", self.config.host, self.config.port);
         let listener = TcpListener::bind(&addr).await?;
-        info!("SMTP handler '{}' listening on {}", self.config.name, addr);
+        info!("SMTP inbound '{}' listening on {}", self.config.name, addr);
 
         let name = self.config.name.clone();
 
@@ -56,12 +55,11 @@ impl InboundHandler for SmtpInbound {
     }
 
     async fn stop(&self) -> Result<()> {
-        info!("Stopping SMTP handler '{}'", self.config.name);
+        info!("Stopping SMTP inbound '{}'", self.config.name);
         Ok(())
     }
 }
 
-/// Handle a single SMTP connection
 async fn handle_smtp_connection(
     stream: tokio::net::TcpStream,
     sender: mpsc::Sender<Message>,
@@ -70,7 +68,6 @@ async fn handle_smtp_connection(
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
 
-    // Send greeting
     writer
         .write_all(b"220 AnyPush SMTP Server Ready\r\n")
         .await?;
@@ -87,7 +84,6 @@ async fn handle_smtp_connection(
         let bytes_read = reader.read_line(&mut line).await?;
 
         if bytes_read == 0 {
-            // Connection closed
             break;
         }
 
@@ -96,10 +92,8 @@ async fn handle_smtp_connection(
 
         if data_mode {
             if line == "." {
-                // End of DATA
                 data_mode = false;
 
-                // Parse email and create message
                 let parser = MessageParser::default();
                 if let Some(parsed) = parser.parse(data_buffer.as_bytes()) {
                     let subject = parsed.subject().map(|s| s.to_string()).unwrap_or_default();
@@ -108,10 +102,14 @@ async fn handle_smtp_connection(
                         .map(|s| s.to_string())
                         .unwrap_or_default();
 
-                    let message = Message::new(mail_from.clone(), rcpt_to.clone(), subject, text)
+                    let message = Message::email(mail_from.clone(), rcpt_to.clone(), subject, text)
                         .with_source(handler_name);
 
-                    info!("Received email: {} -> {:?}", message.from, message.to);
+                    info!(
+                        "Received email: {} -> {:?}",
+                        message.metadata().get_str("smtp.from").unwrap_or_default(),
+                        message.metadata().get("smtp.to")
+                    );
 
                     if let Err(e) = sender.send(message).await {
                         error!("Failed to send message to router: {}", e);
@@ -125,7 +123,6 @@ async fn handle_smtp_connection(
                 mail_from.clear();
                 rcpt_to.clear();
             } else {
-                // Accumulate data
                 data_buffer.push_str(line);
                 data_buffer.push_str("\r\n");
             }
@@ -165,15 +162,12 @@ async fn handle_smtp_connection(
     Ok(())
 }
 
-/// Extract email address from MAIL FROM: or RCPT TO: line
 fn extract_address(line: &str) -> String {
-    // Find content between < and >
     if let Some(start) = line.find('<') {
         if let Some(end) = line.find('>') {
             return line[start + 1..end].to_string();
         }
     }
-    // Fallback: take everything after the colon
     if let Some(pos) = line.find(':') {
         return line[pos + 1..].trim().to_string();
     }

@@ -34,18 +34,40 @@ impl Action for LogAction {
     }
 
     async fn execute(&self, message: Message) -> Result<ActionResult> {
+        let source = message.source_inbound.as_deref().unwrap_or("unknown");
+        let text_preview = message
+            .metadata()
+            .get_str("text")
+            .map(|t| {
+                if t.len() > 50 {
+                    format!("{}...", &t[..50])
+                } else {
+                    t
+                }
+            })
+            .unwrap_or_default();
+
         match self.level.as_str() {
             "debug" => debug!(
-                "Message {}: from={}, subject={}",
-                message.id, message.from, message.subject
+                "Message {}: source={}, data_fields={}, text={}",
+                message.id,
+                source,
+                message.metadata.len(),
+                text_preview
             ),
             "warn" => warn!(
-                "Message {}: from={}, subject={}",
-                message.id, message.from, message.subject
+                "Message {}: source={}, data_fields={}, text={}",
+                message.id,
+                source,
+                message.metadata.len(),
+                text_preview
             ),
             _ => info!(
-                "Message {}: from={}, subject={}",
-                message.id, message.from, message.subject
+                "Message {}: source={}, data_fields={}, text={}",
+                message.id,
+                source,
+                message.metadata.len(),
+                text_preview
             ),
         }
         Ok(ActionResult::Continue(message))

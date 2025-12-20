@@ -1,36 +1,22 @@
-# Example AnyPush configuration
+inbound:
+  - type: tcp
+    name: tcp-in
+    port: 2000
+  - type: http
+    name: http-in
+    port: 2080
+  - type: smtp
+    name: smtp-in
+    port: 2025
 
-workdir: "."
+outbound: []
 
-# Define reusable pipelines using YAML anchors
-.email-processor: &email-processor
+pipeline:
+  - action: foreach_line
+    trim: true
+    skip_empty: true
+    goto:
+      - action: route
+        
   - action: log
     level: info
-  - action: reject
-    message: "Spam not allowed"
-    when:
-      expr: 'subject ~= "spam" || from ~= ".*@spammer\\.com"'
-  - action: route
-    to: main-webhook
-
-# Inbound handlers
-inbound:
-  - type: smtp
-    name: main-smtp
-    host: 0.0.0.0
-    port: 2525
-
-# Outbound handlers
-outbound:
-  - type: webhook
-    name: main-webhook
-    url: https://example.com/api
-    method: POST
-    headers:
-      Content-Type: application/json
-
-# Routes
-routes:
-  - when:
-      from: main-smtp
-    goto: *email-processor

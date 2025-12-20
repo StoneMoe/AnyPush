@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber;
 
@@ -37,28 +38,23 @@ async fn main() -> Result<()> {
 
     // Load config
     let config = config::load_config(&args.config, args.workdir.as_deref())?;
-    info!("Loaded configuration successfully");
 
-    // Create router from config
-    let router = Router::from_config(&config)?;
-    info!(
-        "Router initialized with {} inbound and {} outbound handlers",
-        config.inbound.len(),
-        config.outbound.len()
-    );
+    // Create router from config (Arc for concurrent message processing)
+    let router = Arc::new(Router::from_config(&config).await?);
 
     // Start inbound handlers and get message receiver
     let mut rx = router.start().await?;
-    info!("AnyPush is running. Press Ctrl+C to stop.");
 
-    // Process messages in a loop
+    // Process messages concurrently
     loop {
         tokio::select! {
             Some(message) = rx.recv() => {
-                info!("Processing message: {}", message.id);
-                if let Err(e) = router.process_message(message).await {
-                    tracing::error!("Error processing message: {}", e);
-                }
+                let router = router.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = router.process_message(message).await {
+                        tracing::error!("Error processing message: {}", e);
+                    }
+                });
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("Shutting down...");
