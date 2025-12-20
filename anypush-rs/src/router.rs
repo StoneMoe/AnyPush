@@ -89,14 +89,24 @@ impl Router {
 
         // Spawn task to handle route requests
         tokio::spawn(async move {
-            while let Some(req) = route_rx.recv().await {
+            while let Some(mut req) = route_rx.recv().await {
                 for target in &req.targets {
                     if let Some(handler) = outbound_handlers.get(target) {
-                        let mut msg = req.message.clone();
-                        if let Err(e) = handler.send(&mut msg).await {
+                        // Use stream passthrough if both source is stream and outbound supports it
+                        let result = if req.message.is_stream() && handler.supports_streaming() {
+                            if let Some(reader) = req.message.take_stream() {
+                                handler.send_stream(reader).await
+                            } else {
+                                handler.send(&req.message).await
+                            }
+                        } else {
+                            handler.send(&req.message).await
+                        };
+
+                        if let Err(e) = result {
                             error!("Failed to route to '{}': {}", target, e);
                         } else {
-                            debug!("Routed {} to '{}'", msg.id, target);
+                            debug!("Routed {} to '{}'", req.message.id, target);
                         }
                     } else {
                         warn!("Outbound '{}' not found", target);
