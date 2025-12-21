@@ -54,11 +54,16 @@ pub fn execute_pipeline<'a>(
                         current_msg = source;
                         continue; // Stay on same step to get next frame
                     }
-                    ActionResult::Route { to, message } => {
+                    ActionResult::Route {
+                        to,
+                        message,
+                        params,
+                    } => {
                         let _ = route_tx
                             .send(RouteRequest {
                                 targets: to,
                                 message,
+                                params,
                             })
                             .await;
                         return Ok(ActionResult::Drop);

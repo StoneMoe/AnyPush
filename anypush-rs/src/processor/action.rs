@@ -1,6 +1,7 @@
 //! Action result and trait definitions
 
 use crate::message::Message;
+use crate::outbound::RouteParams;
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -10,7 +11,11 @@ pub enum ActionResult {
     /// Continue to next step with (possibly modified) message
     Continue(Message),
     /// Stop pipeline, route to outbound handler(s)
-    Route { to: Vec<String>, message: Message },
+    Route {
+        to: Vec<String>,
+        message: Message,
+        params: RouteParams,
+    },
     /// Stop pipeline, reject the transaction
     Reject { message: String },
     /// Stop pipeline, silently drop the message
@@ -27,6 +32,7 @@ pub enum ActionResult {
 pub struct RouteRequest {
     pub targets: Vec<String>,
     pub message: Message,
+    pub params: RouteParams,
 }
 
 /// Trait for pipeline actions

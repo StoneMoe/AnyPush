@@ -31,22 +31,34 @@ outbound:
   - type: http
     name: http-out
     url: http://localhost:8080/api
+    # Templates defined here as defaults:
+    # body_template: '{"file": "{{file.name}}", "data": "{{raw_base64}}"}'
+    # content_type: application/json
+
   - type: tcp
     name: tcp-out
     host: localhost
     port: 8080
+    # Template defined here as default:
+    # data_template: "{{text}}"
+
+  # - type: s3
+  #   name: s3-out
+  #   bucket: my-bucket
+  #   key: "uploads/{{timestamp}}/{{id}}.json"
+  #   body_template: "{{raw}}"
+  #   content_type: text/plain
 
 pipeline:
-  # - when:
-  #     from: tcp-in
-  #   action: foreach_line
-  #   trim: true
-  #   skip_empty: true
-  #   goto:
-  #     - action: route
-  #       to: tcp-out
+  # Simple route - uses outbound's default templates
   - action: route
     to: tcp-out
+
+  # Route with override (overrides outbound config defaults):
+  # - action: route
+  #   to: http-out
+  #   body: '{"custom": "{{text}}"}'  # overrides http-out's body_template
+  #   content_type: application/json
 
   - action: log
     level: info

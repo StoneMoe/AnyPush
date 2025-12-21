@@ -1,6 +1,7 @@
 //! Route action - sends message to outbound handler(s)
 
 use crate::message::Message;
+use crate::outbound::RouteParams;
 use crate::processor::{Action, ActionResult};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -10,6 +11,7 @@ use tracing::debug;
 
 pub struct RouteAction {
     to: Vec<String>,
+    params: RouteParams,
 }
 
 impl RouteAction {
@@ -23,7 +25,19 @@ impl RouteAction {
             None => return Err(anyhow!("route action requires 'to' parameter")),
             _ => return Err(anyhow!("'to' must be a string or list of strings")),
         };
-        Ok(Self { to })
+
+        // Pass all route params (except control keys), filtering by valid keys happens in router
+        let mut route_params = RouteParams::new();
+        for (key, value) in params {
+            if key != "action" && key != "to" && key != "when" {
+                route_params.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(Self {
+            to,
+            params: route_params,
+        })
     }
 }
 
@@ -42,6 +56,7 @@ impl Action for RouteAction {
         Ok(ActionResult::Route {
             to: self.to.clone(),
             message,
+            params: self.params.clone(),
         })
     }
 }

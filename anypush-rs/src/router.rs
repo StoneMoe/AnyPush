@@ -10,7 +10,7 @@ use crate::message::Message;
 use crate::outbound::http::HttpOutbound;
 use crate::outbound::s3::S3Outbound;
 use crate::outbound::tcp::TcpOutbound;
-use crate::outbound::OutboundHandler;
+use crate::outbound::{OutboundHandler, RouteParams};
 use crate::processor::{self, RouteRequest};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -98,15 +98,24 @@ impl Router {
             while let Some(mut req) = route_rx.recv().await {
                 for target in &req.targets {
                     if let Some(handler) = outbound_handlers.get(target) {
+                        // Filter params to only include keys this outbound accepts
+                        let valid_keys = handler.support_route_params();
+                        let filtered_params: RouteParams = req
+                            .params
+                            .iter()
+                            .filter(|(k, _)| valid_keys.contains(&k.as_str()))
+                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .collect();
+
                         // Use stream passthrough if both source is stream and outbound supports it
                         let result = if req.message.is_stream() && handler.supports_streaming() {
                             if let Some(reader) = req.message.take_stream() {
-                                handler.send_stream(reader).await
+                                handler.send_stream(reader, &filtered_params).await
                             } else {
-                                handler.send(&req.message).await
+                                handler.send(&req.message, &filtered_params).await
                             }
                         } else {
-                            handler.send(&req.message).await
+                            handler.send(&req.message, &filtered_params).await
                         };
 
                         if let Err(e) = result {

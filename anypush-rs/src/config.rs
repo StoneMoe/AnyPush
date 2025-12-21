@@ -161,6 +161,12 @@ pub struct HttpOutboundConfig {
     pub method: String,
     #[serde(default)]
     pub headers: HashMap<String, String>,
+    /// Body template
+    #[serde(default)]
+    pub body: Option<String>,
+    /// Content-Type header override
+    #[serde(default)]
+    pub content_type: Option<String>,
 }
 
 fn default_method() -> String {
@@ -172,13 +178,16 @@ pub struct TcpOutboundConfig {
     pub name: String,
     pub host: String,
     pub port: u16,
+    /// Data template
+    #[serde(default)]
+    pub data: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct S3OutboundConfig {
     pub name: String,
     pub bucket: String,
-    /// Key template (supports {{id}}, {{from}}, {{subject}}, {{timestamp}})
+    /// Key template
     #[serde(default = "default_s3_key")]
     pub key: String,
     /// Optional region override
@@ -187,6 +196,12 @@ pub struct S3OutboundConfig {
     /// Optional endpoint override (for S3-compatible services)
     #[serde(default)]
     pub endpoint: Option<String>,
+    /// Body template
+    #[serde(default)]
+    pub body: Option<String>,
+    /// Content-Type override
+    #[serde(default)]
+    pub content_type: Option<String>,
 }
 
 fn default_s3_key() -> String {

@@ -1,6 +1,7 @@
 use crate::config::HttpOutboundConfig;
 use crate::message::Message;
-use crate::outbound::OutboundHandler;
+use crate::outbound::{OutboundHandler, RouteParams};
+use crate::template;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
@@ -27,31 +28,55 @@ impl OutboundHandler for HttpOutbound {
         &self.config.name
     }
 
-    async fn send(&self, message: &Message) -> Result<()> {
+    fn support_route_params(&self) -> &'static [&'static str] {
+        &["body", "content_type", "headers"]
+    }
+
+    async fn send(&self, message: &Message, params: &RouteParams) -> Result<()> {
         debug!(
             "Sending message {} to HTTP '{}'",
             message.id, self.config.name
         );
 
+        // URL from config
+        let url = &self.config.url;
+
         let mut request = match self.config.method.to_uppercase().as_str() {
-            "POST" => self.client.post(&self.config.url),
-            "PUT" => self.client.put(&self.config.url),
+            "POST" => self.client.post(url),
+            "PUT" => self.client.put(url),
             method => {
                 return Err(anyhow::anyhow!("Unsupported HTTP method: {}", method));
             }
         };
 
-        // Add headers
+        // Add headers from config
         for (key, value) in &self.config.headers {
             request = request.header(key, value);
         }
 
-        // Send JSON payload
+        // Add headers from params
+        for (key, value) in params.get_map("headers") {
+            request = request.header(key, template::render(&value, message));
+        }
+
+        // Body: route params override -> config template -> empty
+        let body_template = params.get_str("body").or_else(|| self.config.body.clone());
+
+        let body = body_template
+            .map(|tpl| template::render(&tpl, message))
+            .unwrap_or_default();
+
+        let content_type = params
+            .get_str("content_type")
+            .or_else(|| self.config.content_type.clone())
+            .unwrap_or_else(|| "text/plain".to_string());
+
         let response = request
-            .json(message)
+            .header("Content-Type", content_type)
+            .body(body)
             .send()
             .await
-            .with_context(|| format!("Failed to send to HTTP: {}", self.config.url))?;
+            .with_context(|| format!("Failed to send to HTTP: {}", url))?;
 
         if response.status().is_success() {
             info!(

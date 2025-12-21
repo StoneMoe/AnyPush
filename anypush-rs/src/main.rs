@@ -11,6 +11,7 @@ mod message;
 mod outbound;
 mod processor;
 mod router;
+mod template;
 
 use router::Router;
 

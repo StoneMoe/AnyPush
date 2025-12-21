@@ -41,3 +41,6 @@ glob = "0.3"
 # FTP server
 libunftp = "0.21"
 unftp-sbe-fs = "0.3"
+
+# Template engine
+minijinja = "2"

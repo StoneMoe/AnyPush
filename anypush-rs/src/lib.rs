@@ -9,3 +9,4 @@ pub mod message;
 pub mod outbound;
 pub mod processor;
 pub mod router;
+pub mod template;

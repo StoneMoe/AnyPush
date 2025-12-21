@@ -1,6 +1,7 @@
 use crate::config::TcpOutboundConfig;
 use crate::message::{Message, StreamReader};
-use crate::outbound::OutboundHandler;
+use crate::outbound::{OutboundHandler, RouteParams};
+use crate::template;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -24,11 +25,15 @@ impl OutboundHandler for TcpOutbound {
         &self.config.name
     }
 
+    fn support_route_params(&self) -> &'static [&'static str] {
+        &["body", "data"]
+    }
+
     fn supports_streaming(&self) -> bool {
         true
     }
 
-    async fn send(&self, message: &Message) -> Result<()> {
+    async fn send(&self, message: &Message, params: &RouteParams) -> Result<()> {
         let addr = format!("{}:{}", self.config.host, self.config.port);
         debug!(
             "Sending message {} to TCP '{}' at {}",
@@ -39,10 +44,20 @@ impl OutboundHandler for TcpOutbound {
             .await
             .with_context(|| format!("Failed to connect to {}", addr))?;
 
-        // Send message text as raw bytes
-        let text = message.metadata().get_str("text").unwrap_or_default();
+        // Data: route params override -> config template -> default text field
+        let data_template = params
+            .get_str("body")
+            .or_else(|| params.get_str("data"))
+            .or_else(|| self.config.data.clone());
+
+        let data = if let Some(tpl) = data_template {
+            template::render(&tpl, message)
+        } else {
+            message.metadata().get_str("text").unwrap_or_default()
+        };
+
         stream
-            .write_all(text.as_bytes())
+            .write_all(data.as_bytes())
             .await
             .with_context(|| "Failed to write to TCP stream")?;
 
@@ -55,7 +70,7 @@ impl OutboundHandler for TcpOutbound {
         Ok(())
     }
 
-    async fn send_stream(&self, reader: StreamReader) -> Result<()> {
+    async fn send_stream(&self, reader: StreamReader, _params: &RouteParams) -> Result<()> {
         let addr = format!("{}:{}", self.config.host, self.config.port);
         debug!(
             "Stream passthrough to TCP '{}' at {}",
@@ -66,7 +81,6 @@ impl OutboundHandler for TcpOutbound {
             .await
             .with_context(|| format!("Failed to connect to {}", addr))?;
 
-        // Read from input stream and write to output stream
         let mut buf = [0u8; 8192];
         loop {
             let n = {
