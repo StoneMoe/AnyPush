@@ -37,6 +37,12 @@ pub enum InboundConfig {
     Tcp(TcpInboundConfig),
     #[serde(rename = "http")]
     Http(HttpInboundConfig),
+    #[serde(rename = "file")]
+    File(FileInboundConfig),
+    #[serde(rename = "directory")]
+    Directory(DirectoryInboundConfig),
+    #[serde(rename = "ftp")]
+    Ftp(FtpInboundConfig),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +93,53 @@ pub struct HttpInboundConfig {
     #[serde(default = "default_host")]
     pub host: String,
     pub port: u16,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FileMode {
+    /// Watch for new content appended (like tail -f)
+    #[default]
+    Tail,
+    /// Send entire file on each change
+    Full,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileInboundConfig {
+    pub name: String,
+    pub path: String,
+    #[serde(default)]
+    pub mode: FileMode,
+    #[serde(default)]
+    pub delete_after: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectoryInboundConfig {
+    pub name: String,
+    pub path: String,
+    #[serde(default)]
+    pub pattern: Option<String>,
+    #[serde(default)]
+    pub recursive: bool,
+    #[serde(default)]
+    pub delete_after: bool,
+}
+
+fn default_ftp_port() -> u16 {
+    2121
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FtpInboundConfig {
+    pub name: String,
+    #[serde(default = "default_host")]
+    pub host: String,
+    #[serde(default = "default_ftp_port")]
+    pub port: u16,
+    #[serde(default)]
+    pub anonymous: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -309,6 +362,9 @@ impl InboundConfig {
             InboundConfig::Smtp(c) => &c.name,
             InboundConfig::Tcp(c) => &c.name,
             InboundConfig::Http(c) => &c.name,
+            InboundConfig::File(c) => &c.name,
+            InboundConfig::Directory(c) => &c.name,
+            InboundConfig::Ftp(c) => &c.name,
         }
     }
 }

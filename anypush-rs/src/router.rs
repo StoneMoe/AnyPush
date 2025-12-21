@@ -1,4 +1,7 @@
 use crate::config::{Config, InboundConfig, OutboundConfig, StepConfig};
+use crate::inbound::directory::DirectoryInbound;
+use crate::inbound::file::FileInbound;
+use crate::inbound::ftp::FtpInbound;
 use crate::inbound::http::HttpInbound;
 use crate::inbound::smtp::SmtpInbound;
 use crate::inbound::tcp::TcpInbound;
@@ -34,6 +37,9 @@ impl Router {
                 InboundConfig::Smtp(cfg) => Arc::new(SmtpInbound::new(cfg.clone())),
                 InboundConfig::Tcp(cfg) => Arc::new(TcpInbound::new(cfg.clone())),
                 InboundConfig::Http(cfg) => Arc::new(HttpInbound::new(cfg.clone())),
+                InboundConfig::File(cfg) => Arc::new(FileInbound::new(cfg.clone())),
+                InboundConfig::Directory(cfg) => Arc::new(DirectoryInbound::new(cfg.clone())),
+                InboundConfig::Ftp(cfg) => Arc::new(FtpInbound::new(cfg.clone())),
             };
             inbound_handlers.insert(name, handler);
         }

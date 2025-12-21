@@ -33,3 +33,11 @@ base64 = "0.22"
 # AWS S3
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1"
+
+# File watching
+notify = "6"
+glob = "0.3"
+
+# FTP server
+libunftp = "0.21"
+unftp-sbe-fs = "0.3"

@@ -8,15 +8,45 @@ inbound:
   - type: smtp
     name: smtp-in
     port: 2025
+  # File watcher - watch a single file for changes
+  # - type: file
+  #   name: log-watcher
+  #   path: /var/log/app.log
+  #   mode: tail          # tail (new lines) or full (whole file)
+  #   delete_after: false
+  # Directory watcher - watch for new files
+  # - type: directory
+  #   name: uploads
+  #   path: /data/incoming
+  #   pattern: "*.csv"    # optional glob pattern
+  #   recursive: false
+  #   delete_after: true
+  # FTP server - receive file uploads
+  # - type: ftp
+  #   name: ftp-uploads
+  #   port: 2121
+  #   anonymous: true
 
-outbound: []
+outbound:
+  - type: http
+    name: http-out
+    url: http://localhost:8080/api
+  - type: tcp
+    name: tcp-out
+    host: localhost
+    port: 8080
 
 pipeline:
-  - action: foreach_line
-    trim: true
-    skip_empty: true
-    goto:
-      - action: route
-        
+  # - when:
+  #     from: tcp-in
+  #   action: foreach_line
+  #   trim: true
+  #   skip_empty: true
+  #   goto:
+  #     - action: route
+  #       to: tcp-out
+  - action: route
+    to: tcp-out
+
   - action: log
     level: info
